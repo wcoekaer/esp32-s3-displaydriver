@@ -14,7 +14,7 @@
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 
-static const char *FW_VERSION = "1.0.0";
+static const char *FW_VERSION = "1.0.2";
 static const int WATCHDOG_SECONDS = 8;  // a stalled loop reboots the display instead of freezing it
 
 // ---------------------------------------------------------------- display driver
@@ -682,7 +682,9 @@ static void handle(String line) {
     int n = splitFields(arg, f, 4);
     Widget *w = tileFor(f[0], W_BIG);
     String v = n > 1 ? f[1] : "";
-    bool numeric = v.length() && (isdigit(v[0]) || v[0] == '-' || v[0] == '.');
+    // a number is digits with an optional sign / decimal point (so "--" or "n/a" stay text)
+    int d0 = (v.length() && (v[0] == '-' || v[0] == '+')) ? 1 : 0;
+    bool numeric = (int)v.length() > d0 && (isdigit(v[d0]) || (v[d0] == '.' && (int)v.length() > d0 + 1 && isdigit(v[d0 + 1])));
     if (numeric) { w->v = v.toFloat(); w->text[0] = 0; }
     else copyStr(w->text, sizeof(w->text), v);
     copyStr(w->unit, sizeof(w->unit), n > 2 ? f[2] : "");
@@ -787,13 +789,19 @@ static void handle(String line) {
     tft.setBrightness(dim ? bright / 6 : bright);
   } else if (c == "ROT") {
     tft.setRotation(arg.toInt() == 3 ? 3 : 1);
-  } else if (c == "PING") {
-    Serial.printf("PONG tdisplay-usb %s %dx%d uptime=%lus lines=%lu\n", FW_VERSION, fb.width(), fb.height(),
-                  (unsigned long)((now - bootMs) / 1000), (unsigned long)rxLines);
-  } else if (c == "SHOT") {
-    sendScreenshot();
-  } else if (c == "HELP") {
-    help();
+  } else if (c == "PING" || c == "SHOT" || c == "HELP") {
+    // The host asked and is reading, so wait for USB space instead of dropping bytes
+    // (output is otherwise non-blocking, so a host that isn't reading never stalls us).
+    Serial.setTxTimeoutMs(250);
+    if (c == "PING")
+      Serial.printf("PONG tdisplay-usb %s %dx%d uptime=%lus lines=%lu\n", FW_VERSION, fb.width(), fb.height(),
+                    (unsigned long)((now - bootMs) / 1000), (unsigned long)rxLines);
+    else if (c == "SHOT")
+      sendScreenshot();
+    else
+      help();
+    Serial.flush();
+    Serial.setTxTimeoutMs(0);
   } else {
     // not a command: show the whole line in the log
     uint8_t lv = L_INFO;

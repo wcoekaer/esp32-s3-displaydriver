@@ -177,6 +177,10 @@ See [docs/PROTOCOL.md](docs/PROTOCOL.md) for details, replies and the screenshot
   `dtr=True, rts=False` before `open()`, as `tdisplay.py` does.
 - **Permission denied on `/dev/ttyACM0`.** Install the udev rule above, or add your user
   to the `dialout` group.
+- **Which port.** The client uses, in this order: `--port` or `TDISPLAY_PORT`, then
+  `/dev/tdisplay` (from the udev rule), then the first Espressif USB device (VID `303a`).
+  It never guesses a `/dev/ttyACM*` device: other CDC devices, such as a GPS receiver, must
+  not receive display commands.
 - **Several displays.** Set `TDISPLAY_PORT=/dev/ttyACM1`, or pass `--port`, or give each
   one its own udev symlink by serial number.
 - **Nothing on screen after flashing.** Tap RST. A board on battery needs GPIO15 high for

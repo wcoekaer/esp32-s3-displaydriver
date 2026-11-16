@@ -21,7 +21,6 @@ Needs pyserial. Works with Python 3.6+.
 
 import argparse
 import base64
-import glob
 import math
 import os
 import struct
@@ -40,16 +39,16 @@ LEVELS = ("ok", "warn", "crit", "info", "off")
 
 
 def find_port():
-    """The display's serial port: TDISPLAY_PORT, else the first Espressif USB device."""
+    """The display's serial port: TDISPLAY_PORT, else /dev/tdisplay (udev rule), else the
+    first Espressif USB device. Never a guess: other CDC devices (a GPS receiver is often
+    /dev/ttyACM0) must not receive display commands."""
     if os.environ.get("TDISPLAY_PORT"):
         return os.environ["TDISPLAY_PORT"]
-    for p in list_ports.comports():
+    if os.path.exists("/dev/tdisplay"):
+        return "/dev/tdisplay"
+    for p in sorted(list_ports.comports(), key=lambda p: p.device):
         if p.vid == ESPRESSIF_VID:
             return p.device
-    for pattern in ("/dev/tdisplay", "/dev/ttyACM*", "/dev/cu.usbmodem*"):
-        hits = sorted(glob.glob(pattern))
-        if hits:
-            return hits[0]
     raise SystemExit("tdisplay: no display found (connect it, or set --port / TDISPLAY_PORT)")
 
 
