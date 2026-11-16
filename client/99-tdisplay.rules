@@ -1,0 +1,5 @@
+# T-Display-S3 USB display (ESP32-S3 built-in USB serial/JTAG, 303a:1001)
+# - stable name: /dev/tdisplay
+# - group dialout, mode 0660: no root needed for users in dialout
+# Several displays: copy the line and add ATTRS{serial}=="<MAC from `udevadm info`>" with its own SYMLINK.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", SYMLINK+="tdisplay", GROUP="dialout", MODE="0660"
